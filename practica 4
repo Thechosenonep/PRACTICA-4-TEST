@@ -1,0 +1,63 @@
+#include <18F4550.h>
+#include <stdbool.h>
+#device ADC = 10
+#fuses XT, NOPROTECT, NOPUT, NOWDT, NOLVP 
+#use delay(clock=48Mhz, crystal)
+#build(reset = 0x02000, interrupt = 0x02008)
+#org 0x0000, 0x1FFF {}
+#define DS1820_PIN PIN_A0 // Se define pin como entrada digital para leer datos del sensor DS18B20
+#define ONE_WIRE_PIN DS1820_PIN
+#include <usb_cdc.h>
+#include <1wire.c>
+#include <ds1820.c>
+float temperatura;
+
+void main()
+{
+   setup_adc(ADC_CLOCK_INTERNAL);
+   setup_adc_ports(AN0);
+
+   int tempdata[100], c;
+   usb_cdc_init();
+   usb_init();
+   while (1)
+   {
+      usb_task();
+      if (usb_enumerated())
+      {
+         temperatura = ds1820_read();
+
+         for (c = 0; c < 100; c++)
+         {
+            tempdata[c] = temperatura;
+            printf(usb_cdc_putc, "Temperatura: %d", tempdata[c]);
+            delay_ms(5);
+         }
+      }
+   }
+
+   /* while(true)
+   {
+      usb_task();
+      if(usb_enumerated())
+      {
+       set_adc_channel(0);
+       delay_ms(1000);
+       vr = read_adc();
+       vc = vr * r * a_FC;
+       if(vc > 99)
+       {
+         t[0] = 1 + 48;
+       }
+       else
+       {
+         t[0] = ' ';
+         t[1] = (vc/10) % 10 + 48;
+         t[2] = vc % 10 + 48;
+
+         printf(usb_cdc_putc,"Temperatura: %c", t);
+         delay_ms(5);
+       }
+      }
+   } */
+}
