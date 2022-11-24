@@ -1,21 +1,43 @@
 #include <18F4550.h>
 #include <stdbool.h>
 #device ADC = 10
-#fuses XT, NOPROTECT, NOPUT, NOWDT, NOLVP 
-#use delay(clock=48Mhz, crystal)
+#fuses XT,HSPLL, NOWDT, NOPROTECT, NODEBUG, USBDIV, PLL5, CPUDIV1, VREGEN
+#use delay(clock = 48Mhz, crystal)
 #build(reset = 0x02000, interrupt = 0x02008)
 #org 0x0000, 0x1FFF {}
 #define DS1820_PIN PIN_A0 // Se define pin como entrada digital para leer datos del sensor DS18B20
 #define ONE_WIRE_PIN DS1820_PIN
+#define USB_CDC_ISR() RDA_isr()
+#define USB_CDC_DELAYED_FLUSH
+#define USB_CDC_DATA_LOCAL_SIZE 128
+#define USB_CON_SENSE_PIN PIN_B2
+static void RDA_isr(void);
 #include <usb_cdc.h>
 #include <1wire.c>
 #include <ds1820.c>
 float temperatura;
 
+static void RDA_isr(void)
+{
+   while (usb_cdc_kbhit())
+   {
+      int i = 0;
+      char dat[5];
+
+      // Almacena 5 datos leidos del USB CDC
+      for (i = 0; i <= 5; i++)
+      {
+         dat[i] = usb_cdc_getc();
+      }
+   }
+}
 void main()
 {
+   enable_interrupts(INT_RDA);
+   enable_interrupts(GLOBAL);
    setup_adc(ADC_CLOCK_INTERNAL);
    setup_adc_ports(AN0);
+   set_adc_channel(0);
 
    int tempdata[100], c;
    usb_cdc_init();
